@@ -2,7 +2,7 @@
 
 
 ```yml
-git clone https://gitlab.com/public-share2/authorized_key.git
+git clone https://github.com/tetzispa/authorizedkeys.git
 
 ansible-galaxy install -r requirements.yml
 ```
