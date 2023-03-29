@@ -1,0 +1,43 @@
+---
+- hosts: ~
+  remote_user: ~
+  gather_facts: no
+  become: true
+  
+  vars:
+    ssh_users:
+      1:
+        name: root 
+        ssh_keys: ./public_keys/id_rsa.pub
+      2:
+        name: matilde
+        ssh_keys: ./public_keys/mathilde.pub
+    
+  tasks:
+    - name : create autthorized_keys file for root
+      file:
+        path: /root/.ssh/authorized_keys
+        state: touch
+        owner: root
+        group: root
+        mode: 0600
+      when: item.value.name == 'root'
+      loop: "{{ ssh_users | dict2items }}"     
+       
+    - name : create authorized_keys file for users
+      file:
+        path: "/home/{{ item.value.name }}/.ssh/authorized_keys"
+        state: touch
+        owner: "{{ item.value.name }}"
+        group: "{{ item.value.name }}"
+        mode: 0600
+      when: item.value.name != 'root'     
+      loop: "{{ ssh_users | dict2items }}"   
+      
+    - name: upload ssh public key to users authorized keys file
+      authorized_key:
+        user: "{{ item.value.name }}"
+        state: present
+        manage_dir: yes
+        key: "{{ lookup('file', item.value.ssh_keys) }}"
+      loop: "{{ ssh_users | dict2items }}"
