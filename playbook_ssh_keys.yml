@@ -14,7 +14,57 @@
         ssh_keys: ./public_keys/mathilde.pub
     
   tasks:
-    - name : create autthorized_keys file for root
+    - name: Create .ssh directory for users
+      file:
+        path: "/{{ item.value.name }}/.ssh"
+        state: directory
+        mode: '0700'
+      when: item.value.name != 'root'
+      loop: "{{ ssh_users | dict2items }}"
+
+    - name: Check .ssh directory permissions for users
+      stat:
+        path: "/{{ item.value.name }}/.ssh"
+      register: ssh_dir_status
+      when: item.value.name != 'root'
+      loop: "{{ ssh_users | dict2items }}"
+
+    - name: Set correct .ssh directory permissions for users
+      file:
+        path: /{{ item.value.name }}/.ssh
+        state: directory
+        owner: "{{ item.value.name }}"
+        group: users
+        mode: '0700'
+      when: ssh_dir_status.stat.exists and ssh_dir_status.stat.mode != '0700' and item.value.name != 'root'
+      loop: "{{ ssh_users | dict2items }}"
+
+    - name: Create .ssh directory for root
+      file:
+        path: /root/.ssh
+        state: directory
+        mode: '0700'
+      when: item.value.name == 'root'
+      loop: "{{ ssh_users | dict2items }}"
+
+    - name: Check .ssh directory permissions for root
+      stat:
+        path: /root/.ssh
+      register: ssh_dir_status
+      when: item.value.name == 'root'
+      loop: "{{ ssh_users | dict2items }}"
+
+    - name: Set correct .ssh directory permissions for root
+      file:
+        path: /root/.ssh
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      when: ssh_dir_status.stat.exists and ssh_dir_status.stat.mode != '0700'
+      loop: "{{ ssh_users | dict2items }}"
+
+    - name: create authorized_keys file for root
       file:
         path: /root/.ssh/authorized_keys
         state: touch
@@ -24,7 +74,7 @@
       when: item.value.name == 'root'
       loop: "{{ ssh_users | dict2items }}"     
        
-    - name : create authorized_keys file for users
+    - name: create authorized_keys file for users
       file:
         path: "/home/{{ item.value.name }}/.ssh/authorized_keys"
         state: touch
@@ -34,10 +84,8 @@
       when: item.value.name != 'root'     
       loop: "{{ ssh_users | dict2items }}"   
       
-    - name: upload ssh public key to users authorized keys file
+    - name: Upload SSH public key to users authorized keys file
       authorized_key:
         user: "{{ item.value.name }}"
-        state: present
-        manage_dir: yes
         key: "{{ lookup('file', item.value.ssh_keys) }}"
       loop: "{{ ssh_users | dict2items }}"
